@@ -14,6 +14,17 @@ const [formData, setFormData] = useState({
     country: 'Australia'
     });  
     
+    const [signInFormData, setSignInFormData] = useState({
+      email: '',
+      password: '',
+    });
+
+    const [expression, setExpression] = useState<string>('');
+    const [showPopup, setShowPopup] = useState<boolean>(false);
+    const [activeTab, setActiveTab] = useState<string>('signup');
+    const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false); // Track login status
+    const [memory, setMemory] = useState<number | null>(null);
+
 const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prevState => ({
@@ -22,9 +33,13 @@ const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectEle
     }));
     };
 
-  const [expression, setExpression] = useState<string>('');
-  const [showPopup, setShowPopup] = useState<boolean>(false);
-  const [activeTab, setActiveTab] = useState<string>('signup');
+    const handleSignInInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+      const { name, value } = e.target;
+      setSignInFormData(prevState => ({
+        ...prevState,
+        [name]: value,
+      }));
+    };
 
   const handleButtonClick = (value: string) => {
     setExpression(prevExpression => prevExpression + value);
@@ -62,9 +77,14 @@ const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectEle
           'Content-Type': 'application/json'
         }
       });
-  
+      setIsLoggedIn(true);
+      console.log('Response:', response); // Log the entire response object
+
+
       if (response.status === 200) {
         console.log('Sign-up successful!');
+        setIsLoggedIn(true);
+        
       } else {
         console.error('Sign-up failed');
       }
@@ -73,10 +93,127 @@ const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectEle
     }
   };
 
-  const handleSignIn = () => {
-    // Implement sign-in logic
+  const handleSignIn = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    try {
+      const response = await axios.post('http://localhost:5291/api/SignIn', signInFormData, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.status === 200) {
+        // Successful sign-in
+        setShowPopup(false); // Close the sign-in popup
+        setIsLoggedIn(true); // Set login status to true
+      } else {
+        // Unsuccessful sign-in
+        // Show error message as a popup
+        alert('Invalid email or password. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error:', error);
+      alert('An error occurred. Please try again later.');
+    }
   };
 
+  const handleMemoryClear = () => {
+    setMemory(null);
+  };
+
+  const handleMemoryRecall = () => {
+    if (memory !== null) {
+      setExpression(prevExpression => prevExpression + memory.toString());
+    }
+  };
+
+  const handleMemoryStore = () => {
+    try {
+      const result = eval(expression);
+      setMemory(parseFloat(result.toString()));
+    } catch (error) {
+      setMemory(null);
+    }
+  };
+
+  const handleMemoryAdd = () => {
+    try {
+      const result = eval(expression);
+      if (memory !== null) {
+        setMemory(memory + parseFloat(result.toString()));
+      }
+    } catch (error) {
+      // Handle error
+    }
+  };
+
+  const handleSquareRoot = () => {
+    try {
+      const result = Math.sqrt(parseFloat(expression));
+      setExpression(result.toString());
+    } catch (error) {
+      setExpression('Error');
+    }
+  };
+
+  const handleSquare = () => {
+    try {
+      const result = parseFloat(expression) ** 2;
+      setExpression(result.toString());
+    } catch (error) {
+      setExpression('Error');
+    }
+  };
+
+// Render advanced calculator if user is logged in
+if (isLoggedIn) {
+  return (
+    <div>
+    <nav className="navbar">
+      <div className="navbar-title">Web Calculator</div>
+      <div className="navbar-right">
+        <button className="premium-link" onClick={handleGoPremiumClick}>Go Premium</button>
+      </div>
+    </nav>
+    <div className="calculator-container">
+      <h2 className="calculator-title">Advanced</h2> {/* Title */}
+      <div className="calculator">
+        <input type="text" value={expression} readOnly className="result-input" />
+        <div className="button-grid">
+          <button onClick={handleMemoryClear}>MC</button>
+          <button onClick={handleMemoryRecall}>MR</button>
+          <button onClick={handleMemoryStore}>MS</button>
+          <button onClick={handleMemoryAdd}>M+</button>
+
+          <button onClick={handleSquareRoot}>√</button>
+          <button onClick={handleSquare}>^2</button>
+
+          <button onClick={() => handleButtonClick('7')}>7</button>
+          <button onClick={() => handleButtonClick('8')}>8</button>
+          <button onClick={() => handleButtonClick('9')}>9</button>
+          <button onClick={() => handleButtonClick('+')}>+</button>
+
+          <button onClick={() => handleButtonClick('4')}>4</button>
+          <button onClick={() => handleButtonClick('5')}>5</button>
+          <button onClick={() => handleButtonClick('6')}>6</button>
+          <button onClick={() => handleButtonClick('-')}>-</button>
+
+          <button onClick={() => handleButtonClick('1')}>1</button>
+          <button onClick={() => handleButtonClick('2')}>2</button>
+          <button onClick={() => handleButtonClick('3')}>3</button>
+          <button onClick={() => handleButtonClick('*')}>*</button>
+
+          <button onClick={() => handleButtonClick('0')}>0</button>
+          <button onClick={() => handleButtonClick('.')}>.</button>
+          <button onClick={handleCalculate}>=</button>
+          <button onClick={handleClear}>C</button>
+          <button onClick={() => handleButtonClick('/')}>/</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  );
+}
 
 
   
@@ -140,11 +277,11 @@ const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectEle
                   <form onSubmit={handleSignIn}>
                     <div className="form-group">
                       <label htmlFor="email">Email</label>
-                      <input type="email" id="email" name="email" />
+                      <input type="email" id="email" name="email" value={signInFormData.email} onChange={handleSignInInputChange} placeholder="Email" />
                     </div>
                     <div className="form-group">
                       <label htmlFor="password">Password</label>
-                      <input type="password" id="password" name="password" />
+                      <input type="password" id="password" name="password" value={signInFormData.password} onChange={handleSignInInputChange} placeholder="Password" />
                     </div>
                     <button type="submit">Submit</button>
                   </form>
